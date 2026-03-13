@@ -351,6 +351,9 @@
             "collaboration_modes": {
               "type": "boolean"
             },
+            "command_passthrough": {
+              "type": "boolean"
+            },
             "connectors": {
               "type": "boolean"
             },
@@ -1860,6 +1863,9 @@
           "type": "boolean"
         },
         "collaboration_modes": {
+          "type": "boolean"
+        },
+        "command_passthrough": {
           "type": "boolean"
         },
         "connectors": {

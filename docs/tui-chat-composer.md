@@ -99,7 +99,9 @@ There are multiple submission paths, but they share the same core rules:
 
 When steer mode is enabled, `Tab` requests queuing if a task is already running; otherwise it
 submits immediately. `Enter` always submits immediately in this mode. `Tab` does not submit when
-the input starts with `!` (shell command).
+the input starts with `!` (shell command). When the experimental command passthrough feature is
+enabled, single-line explicit CLI commands can also route to the local shell without `!`; wrap the
+input in quotes to force it to the model instead.
 
 ### Normal submit/queue path
 

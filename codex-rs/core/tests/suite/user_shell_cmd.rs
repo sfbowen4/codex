@@ -97,6 +97,104 @@ async fn user_shell_cmd_ls_and_cat_in_temp_dir() {
 }
 
 #[tokio::test]
+async fn user_turn_command_passthrough_executes_without_model_request() -> anyhow::Result<()> {
+    let server = responses::start_mock_server().await;
+    let mut builder = test_codex().with_config(|config| {
+        config
+            .features
+            .enable(Feature::CommandPassthrough)
+            .expect("test config should allow feature update");
+    });
+    let test = builder.build(&server).await?;
+
+    test.submit_turn("pwd").await?;
+
+    let response_requests = server
+        .received_requests()
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|req| req.method.as_str() == "POST" && req.url.path().ends_with("/responses"))
+        .collect::<Vec<_>>();
+    assert!(
+        response_requests.is_empty(),
+        "expected no model requests for passthrough command, got {response_requests:?}"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn quoted_command_bypasses_passthrough_and_reaches_model() -> anyhow::Result<()> {
+    let server = responses::start_mock_server().await;
+    let mut builder = test_codex().with_config(|config| {
+        config
+            .features
+            .enable(Feature::CommandPassthrough)
+            .expect("test config should allow feature update");
+    });
+    let test = builder.build(&server).await?;
+
+    let mock = mount_sse_once(
+        &server,
+        sse(vec![
+            ev_response_created("resp-1"),
+            ev_assistant_message("msg-1", "PASS"),
+            ev_completed("resp-1"),
+        ]),
+    )
+    .await;
+
+    test.submit_turn("\"pwd\" reply exactly with PASS").await?;
+
+    let request = mock.single_request();
+    assert!(
+        request
+            .message_input_texts("user")
+            .iter()
+            .any(|text| text == "\"pwd\" reply exactly with PASS"),
+        "expected quoted prompt in request body"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn natural_language_prompt_does_not_passthrough() -> anyhow::Result<()> {
+    let server = responses::start_mock_server().await;
+    let mut builder = test_codex().with_config(|config| {
+        config
+            .features
+            .enable(Feature::CommandPassthrough)
+            .expect("test config should allow feature update");
+    });
+    let test = builder.build(&server).await?;
+
+    let mock = mount_sse_once(
+        &server,
+        sse(vec![
+            ev_response_created("resp-1"),
+            ev_assistant_message("msg-1", "PASS"),
+            ev_completed("resp-1"),
+        ]),
+    )
+    .await;
+
+    test.submit_turn("who are you").await?;
+
+    let request = mock.single_request();
+    assert!(
+        request
+            .message_input_texts("user")
+            .iter()
+            .any(|text| text == "who are you"),
+        "expected natural-language prompt in request body"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn user_shell_cmd_can_be_interrupted() {
     // Set up isolated config and conversation.
     let server = start_mock_server().await;

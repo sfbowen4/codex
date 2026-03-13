@@ -165,6 +165,8 @@ pub enum Feature {
     DefaultModeRequestUserInput,
     /// Enable automatic review for approval prompts.
     GuardianApproval,
+    /// Auto-run explicit local CLI commands without a leading `!`.
+    CommandPassthrough,
     /// Enable collaboration modes (Plan, Default).
     /// Kept for config backward compatibility; behavior is always collaboration-modes-enabled.
     CollaborationModes,
@@ -777,6 +779,16 @@ pub const FEATURES: &[FeatureSpec] = &[
         stage: Stage::Experimental {
             name: "Automatic approval review",
             menu_description: "Dispatch `on-request` approval prompts (for e.g. sandbox escapes or blocked network access) to a carefully-prompted security reviewer subagent rather than blocking the agent on your input.",
+            announcement: "",
+        },
+        default_enabled: false,
+    },
+    FeatureSpec {
+        id: Feature::CommandPassthrough,
+        key: "command_passthrough",
+        stage: Stage::Experimental {
+            name: "Command passthrough",
+            menu_description: "Automatically run explicit local CLI commands such as `ls` or `git status` without requiring a leading `!`. Start the prompt with quotes to force it to the model instead.",
             announcement: "",
         },
         default_enabled: false,

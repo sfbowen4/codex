@@ -4291,6 +4291,7 @@ mod handlers {
     use crate::codex::spawn_review_thread;
     use crate::config::Config;
 
+    use crate::features::Feature;
     use crate::mcp::auth::compute_auth_statuses;
     use crate::mcp::collect_mcp_snapshot_from_manager;
     use crate::review_prompts::resolve_review_request;
@@ -4420,6 +4421,15 @@ mod handlers {
             _ => unreachable!(),
         };
 
+        if let Some(command) = crate::user_shell_passthrough::detect_user_shell_passthrough_command(
+            sess.features.enabled(Feature::CommandPassthrough),
+            &resolved_cwd_for_updates(sess, &updates).await,
+            &items,
+        ) {
+            run_user_shell_command_with_updates(sess, sub_id, command, updates).await;
+            return;
+        }
+
         let Ok(current_context) = sess.new_turn_with_sub_id(sub_id, updates).await else {
             // new_turn_with_sub_id already emits the error event.
             return;
@@ -4439,6 +4449,21 @@ mod handlers {
     }
 
     pub async fn run_user_shell_command(sess: &Arc<Session>, sub_id: String, command: String) {
+        run_user_shell_command_with_updates(
+            sess,
+            sub_id,
+            command,
+            SessionSettingsUpdate::default(),
+        )
+        .await;
+    }
+
+    async fn run_user_shell_command_with_updates(
+        sess: &Arc<Session>,
+        sub_id: String,
+        command: String,
+        updates: SessionSettingsUpdate,
+    ) {
         if let Some((turn_context, cancellation_token)) =
             sess.active_turn_context_and_cancellation_token().await
         {
@@ -4456,13 +4481,27 @@ mod handlers {
             return;
         }
 
-        let turn_context = sess.new_default_turn_with_sub_id(sub_id).await;
+        let Ok(turn_context) = sess.new_turn_with_sub_id(sub_id, updates).await else {
+            return;
+        };
         sess.spawn_task(
             Arc::clone(&turn_context),
             Vec::new(),
             UserShellCommandTask::new(command),
         )
         .await;
+    }
+
+    async fn resolved_cwd_for_updates(
+        sess: &Arc<Session>,
+        updates: &SessionSettingsUpdate,
+    ) -> PathBuf {
+        if let Some(cwd) = updates.cwd.clone() {
+            return cwd;
+        }
+
+        let state = sess.state.lock().await;
+        state.session_configuration.cwd.clone()
     }
 
     pub async fn resolve_elicitation(

@@ -79,6 +79,23 @@ fn guardian_approval_is_experimental_and_user_toggleable() {
 }
 
 #[test]
+fn command_passthrough_is_experimental_and_user_toggleable() {
+    let spec = Feature::CommandPassthrough.info();
+    let stage = spec.stage;
+
+    assert!(matches!(stage, Stage::Experimental { .. }));
+    assert_eq!(stage.experimental_menu_name(), Some("Command passthrough"));
+    assert_eq!(
+        stage.experimental_menu_description().map(str::to_owned),
+        Some(
+            "Automatically run explicit local CLI commands such as `ls` or `git status` without requiring a leading `!`. Start the prompt with quotes to force it to the model instead.".to_string()
+        )
+    );
+    assert_eq!(stage.experimental_announcement(), None);
+    assert_eq!(Feature::CommandPassthrough.default_enabled(), false);
+}
+
+#[test]
 fn request_permissions_is_under_development() {
     assert_eq!(
         Feature::ExecPermissionApprovals.stage(),

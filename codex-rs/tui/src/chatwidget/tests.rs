@@ -7295,6 +7295,13 @@ async fn experimental_features_popup_snapshot() {
             enabled: false,
         },
         ExperimentalFeatureItem {
+            feature: Feature::CommandPassthrough,
+            name: "Command passthrough".to_string(),
+            description: "Automatically run explicit local CLI commands without a leading `!`."
+                .to_string(),
+            enabled: false,
+        },
+        ExperimentalFeatureItem {
             feature: Feature::ShellTool,
             name: "Shell tool".to_string(),
             description: "Allow the model to run shell commands.".to_string(),
@@ -7346,6 +7353,35 @@ async fn experimental_features_toggle_saves_on_exit() {
 
     let updates = updates.expect("expected UpdateFeatureFlags event");
     assert_eq!(updates, vec![(expected_feature, true)]);
+}
+
+#[tokio::test]
+async fn experimental_popup_includes_command_passthrough() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(None).await;
+    let passthrough_stage = FEATURES
+        .iter()
+        .find(|spec| spec.id == Feature::CommandPassthrough)
+        .map(|spec| spec.stage)
+        .expect("expected command passthrough feature metadata");
+    let passthrough_name = passthrough_stage
+        .experimental_menu_name()
+        .expect("expected command passthrough experimental menu name");
+    let passthrough_description = passthrough_stage
+        .experimental_menu_description()
+        .expect("expected command passthrough experimental description");
+
+    chat.open_experimental_popup();
+
+    let popup = render_bottom_popup(&chat, 120);
+    let normalized_popup = popup.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        popup.contains(passthrough_name),
+        "expected command passthrough entry in experimental popup, got:\n{popup}"
+    );
+    assert!(
+        normalized_popup.contains(passthrough_description),
+        "expected command passthrough description in experimental popup, got:\n{popup}"
+    );
 }
 
 #[tokio::test]
